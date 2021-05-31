@@ -1,0 +1,161 @@
+from sklearn.datasets import fetch_20newsgroups
+from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.feature_extraction.text import TfidfTransformer
+from sklearn.naive_bayes import MultinomialNB
+from sklearn.pipeline import Pipeline
+import numpy as np
+from sklearn.linear_model import SGDClassifier
+from sklearn.svm import LinearSVC
+import pandas as pd
+from sklearn.model_selection import train_test_split
+
+#twenty_train = fetch_20newsgroups(subset='train', shuffle=True)
+
+#print(twenty_train.target_names) #prints all the categories
+#print("\n".join(twenty_train.data[0].split("\n")[:3])) #prints first line of the first data file
+"""
+count_vect = CountVectorizer()
+X_train_counts = count_vect.fit_transform(twenty_train.data)
+print(X_train_counts.shape)
+
+tfidf_transformer = TfidfTransformer()
+X_train_tfidf = tfidf_transformer.fit_transform(X_train_counts)
+print(X_train_tfidf.shape)
+"""
+
+df = pd.read_csv('rt_dataset_prepared.csv')
+
+for index, row in df.iterrows():
+    if row["RADIOTHERAPY"] == "YES":
+        df.loc[index, 'RADIOTHERAPY'] = 1
+    else:
+        df.loc[index, 'RADIOTHERAPY'] = 0
+
+for index, row in df.iterrows():
+    try:
+        #df.loc[index, 'CONDITION_LIST'] = df['CONDITION_LIST'].iloc[index].replace("|", " ")
+        df.loc[index, 'SHORT_TITLE'] = df['SHORT_TITLE'].iloc[index].lower()
+        #df.loc[index, 'CONDITION_LIST'] = df['CONDITION_LIST'].iloc[index].lower()
+        df.loc[index, 'INTERVENTIONS_NAMES'] = df['INTERVENTIONS_NAMES'].iloc[index].replace("|", " ")
+        df.loc[index, 'INTERVENTIONS_NAMES'] = df['INTERVENTIONS_NAMES'].iloc[index].replace("[", " ")
+        df.loc[index, 'INTERVENTIONS_NAMES'] = df['INTERVENTIONS_NAMES'].iloc[index].replace(",", " ")
+        df.loc[index, 'INTERVENTIONS_NAMES'] = df['INTERVENTIONS_NAMES'].iloc[index].replace("\"", " ")
+        df.loc[index, 'INTERVENTIONS_NAMES'] = df['INTERVENTIONS_NAMES'].iloc[index].replace("]", " ")
+        df.loc[index, 'INTERVENTIONS_NAMES'] = df['INTERVENTIONS_NAMES'].iloc[index].replace(";", " ")
+        """df.loc[index, 'CONDITION_LIST'] = df['CONDITION_LIST'].iloc[index].replace("[", " ")
+        df.loc[index, 'CONDITION_LIST'] = df['CONDITION_LIST'].iloc[index].replace(",", " ")
+        df.loc[index, 'CONDITION_LIST'] = df['CONDITION_LIST'].iloc[index].replace("\"", "")
+        df.loc[index, 'CONDITION_LIST'] = df['CONDITION_LIST'].iloc[index].replace("]", " ")
+        df.loc[index, 'CONDITION_LIST'] = df['CONDITION_LIST'].iloc[index].replace(";", " ")
+        df.loc[index, 'CONDITION_LIST'] = df['CONDITION_LIST'].iloc[index].replace(":", " ")"""
+        df.loc[index, 'INTERVENTIONS_NAMES'] = df['INTERVENTIONS_NAMES'].iloc[index].replace(":", " ")
+        #df.loc[index, 'CONDITION_LIST'] = df['CONDITION_LIST'].iloc[index].replace("/", " ")
+        df.loc[index, 'INTERVENTIONS_NAMES'] = df['INTERVENTIONS_NAMES'].iloc[index].replace("/", " ")
+        #df.loc[index, 'CONDITION_LIST'] = df['CONDITION_LIST'].iloc[index].replace("\\", " ")
+        df.loc[index, 'INTERVENTIONS_NAMES'] = df['INTERVENTIONS_NAMES'].iloc[index].replace("\\", " ")
+        #df.loc[index, 'CONDITION_LIST'] = df['CONDITION_LIST'].iloc[index].replace("(", " ")
+        df.loc[index, 'INTERVENTIONS_NAMES'] = df['INTERVENTIONS_NAMES'].iloc[index].replace("(", " ")
+        #df.loc[index, 'CONDITION_LIST'] = df['CONDITION_LIST'].iloc[index].replace(")", " ")
+        df.loc[index, 'INTERVENTIONS_NAMES'] = df['INTERVENTIONS_NAMES'].iloc[index].replace(")", " ")
+        df.loc[index, 'SHORT_TITLE'] = df['SHORT_TITLE'].iloc[index].replace("(", " ")
+        df.loc[index, 'SHORT_TITLE'] = df['SHORT_TITLE'].iloc[index].replace(")", " ")
+        df.loc[index, 'SHORT_TITLE'] = df['SHORT_TITLE'].iloc[index].replace("-", " ")
+        df.loc[index, 'SHORT_TITLE'] = df['SHORT_TITLE'].iloc[index].replace(":", " ")
+        df.loc[index, 'SHORT_TITLE'] = df['SHORT_TITLE'].iloc[index].replace(".", " ")
+    except:
+        continue
+
+df['Text'] = df[['SHORT_TITLE', 'CONDITION_LIST']].apply(lambda x: ' '.join(x.astype(str)), axis=1)
+
+sentences = df['Text'].values
+#sentences = df['CONDITION_LIST'].values
+
+y = df['RADIOTHERAPY'].values
+y = y.astype('int')
+
+sentences_train, sentences_test, y_train, y_test = train_test_split(sentences, y, test_size=0.25, random_state=1000)
+
+# rijeci za ignorisanje
+stop_words = ["cancer", "all", "&", "in", "the", "is", "and", "disease", "diseases", "disorder", "symptom",
+                           "symptoms", "drug", "drugs", "problems", "problem", "prob", "probs", "med", "meds",
+                           "pill", "pills", "medicine", "medicines", "medication", "medications", "treatment",
+                           "treatments", "caps", "capsules", "capsule", "tablet", "tablets", "tabs", "doctor",
+                           "dr", "dr.", "doc",
+                           "physician", "physicians", "test", "tests", "testing", "specialist", "specialists",
+                           "side-effect",  "side-effects", "pharmaceutical", "pharmaceuticals", "pharma", "diagnosis",
+                           "diagnose", "diagnosed", "exam", "challenge", "device", "condition", "conditions", "suffer",
+                           "suffering",  "suffered", "feel", "feeling", "prescription", "prescribe", "prescribed",
+                           "over-the-counter", "otc", "patient", "patients", "one", "year", "protocol", "evaluate",
+                           "evaluation", "disorders", "disorder", "medicine" "precision", "analysis", "of",
+                           "identification", "prognosis", "change", "changes", "treatment", "study", "adult", "adults",
+                           "single", 'counter', 'effect', 'effects', 'over', 'side', "centered", "trial", "center",
+                           "studies", "performance", "model", "prediction", "for", "diagnosis", "data", "features"]
+
+text_clf_svm = Pipeline([('vect', CountVectorizer(min_df=0, lowercase=True, stop_words=stop_words, max_df=0.50)),
+                      ('tfidf', TfidfTransformer()),
+                      ('clf-svm', LinearSVC())])
+
+_ = text_clf_svm.fit(sentences_train, y_train)
+predicted_svm = text_clf_svm.predict(sentences_test)
+print("Accuracy with LinearSVC: " + str(np.mean(predicted_svm == y_test)))
+
+
+# test
+#test_df = pd.read_csv('test.csv', names=['NCTId', 'Title', 'Conditions'], skiprows=1);
+test_df = pd.read_csv('rt_test.csv');
+for index, row in test_df.iterrows():
+    try:
+        """test_df.loc[index, 'CONDITION_LIST'] = test_df['CONDITION_LIST'].iloc[index].replace("[", "")
+        test_df.loc[index, 'CONDITION_LIST'] = test_df['CONDITION_LIST'].iloc[index].replace(",", " ")
+        test_df.loc[index, 'CONDITION_LIST'] = test_df['CONDITION_LIST'].iloc[index].replace("\"", "")
+        test_df.loc[index, 'CONDITION_LIST'] = test_df['CONDITION_LIST'].iloc[index].replace("]", "")
+        test_df.loc[index, 'CONDITION_LIST'] = test_df['CONDITION_LIST'].iloc[index].replace(";", "")
+        test_df.loc[index, 'CONDITION_LIST'] = test_df['CONDITION_LIST'].iloc[index].lower()"""
+        test_df.loc[index, 'INTERVENTIONS_NAMES'] = test_df['INTERVENTIONS_NAMES'].iloc[index].lower()
+        test_df.loc[index, 'INTERVENTIONS_NAMES'] = test_df['INTERVENTIONS_NAMES'].iloc[index].replace("|", " ")
+        #test_df.loc[index, 'CONDITION_LIST'] = test_df['CONDITION_LIST'].iloc[index].replace("|", " ")
+        test_df.loc[index, 'INTERVENTIONS_NAMES'] = test_df['INTERVENTIONS_NAMES'].iloc[index].replace("[", "")
+        test_df.loc[index, 'INTERVENTIONS_NAMES'] = test_df['INTERVENTIONS_NAMES'].iloc[index].replace(",", " ")
+        test_df.loc[index, 'INTERVENTIONS_NAMES'] = test_df['INTERVENTIONS_NAMES'].iloc[index].replace("\"", "")
+        test_df.loc[index, 'INTERVENTIONS_NAMES'] = test_df['INTERVENTIONS_NAMES'].iloc[index].replace("]", "")
+        test_df.loc[index, 'INTERVENTIONS_NAMES'] = test_df['INTERVENTIONS_NAMES'].iloc[index].replace(";", "")
+        test_df.loc[index, 'INTERVENTIONS_NAMES'] = test_df['INTERVENTIONS_NAMES'].iloc[index].lower()
+        test_df.loc[index, 'SHORT_TITLE'] = test_df['SHORT_TITLE'].iloc[index].replace("|", " ")
+        test_df.loc[index, 'SHORT_TITLE'] = test_df['SHORT_TITLE'].iloc[index].replace("[", "")
+        test_df.loc[index, 'SHORT_TITLE'] = test_df['SHORT_TITLE'].iloc[index].replace(",", " ")
+        test_df.loc[index, 'SHORT_TITLE'] = test_df['SHORT_TITLE'].iloc[index].replace("\"", "")
+        test_df.loc[index, 'SHORT_TITLE'] = test_df['SHORT_TITLE'].iloc[index].replace("]", "")
+        test_df.loc[index, 'SHORT_TITLE'] = test_df['SHORT_TITLE'].iloc[index].replace(";", "")
+    except:
+        continue;
+
+# VALIDATION LABELS
+"""val = []
+for index, row in test_df.iterrows():
+    if row["RADIOTHERAPY"] == "YES":
+        test_df.loc[index, 'RADIOTHERAPY'] = 1
+    else:
+        test_df.loc[index, 'RADIOTHERAPY'] = 0
+    val.append(test_df.loc[index, 'RADIOTHERAPY'])"""
+
+test_df['Text'] = test_df[['SHORT_TITLE', 'INTERVENTIONS_NAMES']].apply(lambda x: ' '.join(x.astype(str)), axis=1)
+sentences = test_df['Text'].values
+#sentences = test_df['CONDITION_LIST'].values.astype(str)
+print(sentences)
+
+predictions = text_clf_svm.predict(sentences)
+
+for index, row in test_df.iterrows():
+    if predictions[index] == 1:
+        test_df.loc[index, 'RADIOTHERAPY'] = "YES"
+    else:
+        test_df.loc[index, 'RADIOTHERAPY'] = "NO"
+
+
+#test_df.to_csv("MLConditionsFullResult.csv", index=False, columns=["Title", "Conditions", "ONCOLOGY", "NCTId"])
+test_df.to_csv("MLConditionsResultRT.csv", index=False, columns=["SHORT_TITLE", "INTERVENTIONS_NAMES", "CONDITION_LIST", "RADIOTHERAPY"])
+
+"""pred = np.array(predictions)
+val = np.array(val)
+accuracy = np.mean(pred == val)
+print("Accuracy: " + str(accuracy))"""

@@ -1,0 +1,9 @@
+.idea
+venv
+*.csv
+<<<<<<< HEAD
+dataset
+=======
+
+dataset/*.csv
+>>>>>>> b39a3728bf59fa009ca5b7a063d9fb2d6db494fd
